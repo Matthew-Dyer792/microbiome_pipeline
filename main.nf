@@ -232,12 +232,21 @@ workflow metascope_pipeline {
         .groupTuple()
         .set{ filtered_bam }
 
+    // mix bam files to be merged
     aligned_bam
         .mix( filtered_bam )
         .set{ to_merge }
 
     BAM_MERGE (to_merge)
-    METASCOPE_ID (BAM_MERGE.out.bam)
+
+    // filter out the target bam file
+    BAM_MERGE.out.bam
+        .filter{ it[1] =~ /(filtered)/ }
+        .set{ id }
+
+    id.view()
+
+    METASCOPE_ID (id)
 }
 
 /*
