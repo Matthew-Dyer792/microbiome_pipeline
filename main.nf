@@ -244,8 +244,6 @@ workflow metascope_pipeline {
         .filter{ it[1] =~ /(filtered)/ }
         .set{ id }
 
-    id.view()
-
     METASCOPE_ID (id)
 }
 
