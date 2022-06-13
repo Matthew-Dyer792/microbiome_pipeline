@@ -72,8 +72,6 @@ process METASCOPE_ALIGN {
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'file:///research/project/shared/benoukraf_lab/pathoscope/metascope/metascope.sif' : '' }"
 
-    // publishDir "${params.outdir}/${meta.id}_results", mode: 'copy'
-
     cpus 28
     memory '56 GB'
 
@@ -118,7 +116,7 @@ process BAM_MERGE {
     tuple val(meta), path(bam)
 
     output:
-    tuple val(meta), path("*merged.target.bam"), emit: bam
+    tuple val(meta), path("*merged.${meta.step}.bam"), emit: bam
 
     when:
     task.ext.when == null || task.ext.when
@@ -145,8 +143,6 @@ process METASCOPE_FILTER {
 
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'file:///research/project/shared/benoukraf_lab/pathoscope/metascope/metascope.sif' : '' }"
-
-    publishDir "${params.outdir}/${meta.id}_results", mode: 'copy'
 
     cpus 28
     memory '56 GB'
@@ -213,6 +209,14 @@ process METASCOPE_ID {
 workflow metascope_pipeline {
     METASCOPE_ALIGN (align_files)
 
+    // refactor id to allow grouping of bam files by sample id
+    METASCOPE_ALIGN.out.bam
+        .map{ it -> tuple([id: "${it[0].id}", step: "target"], it[1]) }
+        .groupTuple()
+        .set{ aligned_bam }
+
+    BAM_MERGE (aligned_bam)
+
     // add cartesian mulitply the sample fastqs to the indexed target genomes
     METASCOPE_ALIGN.out.bam
         .combine(filter_index)
@@ -226,7 +230,7 @@ workflow metascope_pipeline {
 
     // refactor id to allow grouping of bam files by sample id
     METASCOPE_FILTER.out.bam
-        .map{ it -> tuple([id: "${it[0].id}"], it[1]) }
+        .map{ it -> tuple([id: "${it[0].id}", step: "filtered"], it[1]) }
         .groupTuple()
         .set{ filtered_bam }
 
