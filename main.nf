@@ -208,29 +208,12 @@ process METASCOPE_ID {
 */
 
 //
-// WORKFLOW: Run main bowtie2_align analysis pipeline
+// WORKFLOW: Run main metascope analysis pipeline
 //
 workflow metascope_pipeline {
     METASCOPE_ALIGN (align_files)
 
-    // // 
-    // METASCOPE_ALIGN.out.bam
-    //     .map{ it -> tuple([id: "${it[0].id}"], it[1]) }
-    //     .groupTuple()
-    //     .set{ aligned_bam }
-
-    // BAM_MERGE (aligned_bam)
-
-    // // 
-    // BAM_MERGE.out.bam
-    //     .combine(filter_index)
-    //     .map{ it-> 
-    //         tuple([id: "${it[0].id}", single_end: params.single_end, index_prefix: "${it[2].simpleName}"],
-    //         file("${it[1]}"),
-    //         [file("${it[2]}"), file("${it[3]}"), file("${it[4]}"), file("${it[5]}"), file("${it[6]}"), file("${it[7]}")]) }
-    //     .set{ filter_files }
-
-    // 
+    // add cartesian mulitply the sample fastqs to the indexed target genomes
     METASCOPE_ALIGN.out.bam
         .combine(filter_index)
         .map{ it-> 
@@ -241,17 +224,13 @@ workflow metascope_pipeline {
 
     METASCOPE_FILTER (filter_files)
 
-    // 
+    // refactor id to allow grouping of bam files by sample id
     METASCOPE_FILTER.out.bam
         .map{ it -> tuple([id: "${it[0].id}"], it[1]) }
         .groupTuple()
         .set{ filtered_bam }
 
-    filtered_bam.view()
-
     BAM_MERGE (filtered_bam)
-
-    // METASCOPE_ID (METASCOPE_FILTER.out.bam)
     METASCOPE_ID (BAM_MERGE.out.bam)
 }
 
