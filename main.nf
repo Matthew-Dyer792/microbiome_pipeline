@@ -215,8 +215,6 @@ workflow metascope_pipeline {
         .groupTuple()
         .set{ aligned_bam }
 
-    BAM_MERGE (aligned_bam)
-
     // add cartesian mulitply the sample fastqs to the indexed target genomes
     METASCOPE_ALIGN.out.bam
         .combine(filter_index)
@@ -234,7 +232,11 @@ workflow metascope_pipeline {
         .groupTuple()
         .set{ filtered_bam }
 
-    BAM_MERGE (filtered_bam)
+    aligned_bam
+        .mix( filtered_bam )
+        .set{ to_merge }
+
+    BAM_MERGE (to_merge)
     METASCOPE_ID (BAM_MERGE.out.bam)
 }
 
