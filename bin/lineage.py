@@ -53,7 +53,8 @@ def write_file(output_name, line, record):
             if rank.get('Rank') == 'superkingdom' and rank.get('ScientificName') == 'Bacteria':
                 field_names = ['read_count', 'superkingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species']
             elif rank.get('Rank') == 'superkingdom' and rank.get('ScientificName') == 'Viruses':
-                field_names = ['read_count', 'superkingdom', 'kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'serotype']
+                # field_names = ['read_count', 'superkingdom', 'kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'serotype']
+                field_names = ['read_count', 'superkingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'serotype']
             
         # search the Entrez output and set the full lineage name
         for name in lineage:
