@@ -4,6 +4,7 @@ from pathlib import Path
 import argparse
 from re import L
 from Bio import Entrez
+import time
 
 
 def read_metascope_out(args):
@@ -19,10 +20,32 @@ def read_metascope_out(args):
         for line in reader:
             id_list.append(line.get('TaxonomyID'))
 
-    # use Entrez through biopython to get lineage information from NCBI's taxonomy database
-    Entrez.email = "mjd443@mun.ca"
-    handle = Entrez.efetch(db="Taxonomy", id=id_list, retmode="xml")
-    records = Entrez.read(handle)
+    i = 0
+    exit = -(len(id_list) // -10000)
+    records = []
+
+    while i < exit:
+        start = 0 + (i * 10000)
+        if 10000 + (i * 10000) < len(id_list):
+            end = 10000 + (i * 10000)
+        else: 
+            end = len(id_list)
+
+        # print(start, end)
+
+        search_list = id_list[start:end]
+
+        # use Entrez through biopython to get lineage information from NCBI's taxonomy database
+        Entrez.email = "mjd443@mun.ca"
+        # handle = Entrez.efetch(db="Taxonomy", id=id_list, retmode="xml")
+        handle = Entrez.efetch(db="Taxonomy", id=search_list, retmode="xml")
+        temp_records = Entrez.read(handle)
+
+        records = records + temp_records
+        i += 1
+        time.sleep(10)
+
+    # print(len(records))
 
     # open csv files
     with open(args.file, 'r') as csv_file:
@@ -36,6 +59,7 @@ def read_metascope_out(args):
             write_file(output_name, line, record)
 
             i += 1
+            # print(i, '/', len(records))
 
 
 def write_file(output_name, line, record):
@@ -55,7 +79,7 @@ def write_file(output_name, line, record):
             elif rank.get('Rank') == 'superkingdom' and rank.get('ScientificName') == 'Viruses':
                 # field_names = ['read_count', 'superkingdom', 'kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'serotype']
                 field_names = ['read_count', 'superkingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species', 'serotype']
-            
+
         # search the Entrez output and set the full lineage name
         for name in lineage:
             rank = name.get('Rank')
@@ -64,8 +88,19 @@ def write_file(output_name, line, record):
 
         # remove unused columns from the line dictionary
         entries_to_remove = ['Proportion', 'TaxonomyID', 'EMreads', 'EMProportion', 'Genome']
+
+        for key in line.keys():
+            if key not in field_names and key not in entries_to_remove:
+                # print("THIS IS A BAD", key)
+                entries_to_remove.append(key)
+
         for entry in entries_to_remove:
             line.pop(entry)
+
+        # entries_to_remove = line.keys()
+        # if entry not in field_names:
+
+        # print(line.keys())
 
         # create line writer
         writer = csv.DictWriter(output_file, fieldnames=field_names, delimiter='\t')
