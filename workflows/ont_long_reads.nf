@@ -28,6 +28,7 @@ include { GENERATE_FILTERED_QNAMES              } from '../modules/command_line/
 
 process MINIMAP2_ALIGN {
     tag "$meta.id"
+    label 'process_high'
 
     errorStrategy { task.attempt <= 3 ? 'retry' : 'finish' }
     maxRetries 3
@@ -37,8 +38,8 @@ process MINIMAP2_ALIGN {
 
     // publishDir "${params.outdir}/${meta.id}_results/bam", mode: 'copy'
 
-    cpus 12
-    memory '24 GB'
+    // cpus 12
+    // memory '24 GB'
 
     input:
     tuple val(meta), path(reads), path(index)
@@ -68,6 +69,7 @@ process MINIMAP2_ALIGN {
 
 process MINIMAP2_FILTER {
     tag "$meta.id"
+    label 'process_high'
 
     errorStrategy { task.attempt <= 3 ? 'retry' : 'finish' }
     maxRetries 3
@@ -75,8 +77,8 @@ process MINIMAP2_FILTER {
     conda (params.enable_conda ? "bioconda::minimap2=2.24 bioconda::samtools=1.14" : null)
     container "${ workflow.containerEngine == 'singularity' ? 'quay.io/biocontainers/mulled-v2-66534bcbb7031a148b13e2ad42583020b9cd25c4:1679e915ddb9d6b4abda91880c4b48857d471bd8-0' : null}"
 
-    cpus 12
-    memory '24 GB'
+    // cpus 12
+    // memory '24 GB'
 
     input:
     tuple val(meta), path(reads), path(index)

@@ -7,8 +7,8 @@ process METASCOPE_ID {
     // issue with chia, will need work around
     // container "${ workflow.containerEngine == 'singularity' ? 'file:///research/project/shared/benoukraf_lab/.singularity_cache/metascope.sif' : null}"
 
-    cpus 2
-    memory '60 GB'
+    // cpus 2
+    // memory '30 GB'
 
     input:
     tuple val(meta), path(bam)
