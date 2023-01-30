@@ -2,14 +2,7 @@ process METASCOPE_ALIGN {
     tag "$meta.id"
     label 'process_high'
 
-    errorStrategy { task.attempt <= 3 ? 'retry' : 'finish' }
-    maxRetries 3
-
-    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-        'file:///research/project/shared/benoukraf_lab/.singularity_cache/metascope.sif' : '' }"
-
-    cpus 28
-    memory '56 GB'
+    container "${ workflow.containerEngine == 'singularity' ? 'file:///research/project/shared/benoukraf_lab/.singularity_cache/metascope.sif' : null}"
 
     input:
     tuple val(meta), path(reads), path(index)
