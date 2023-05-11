@@ -19,23 +19,19 @@
 ========================================================================================
 */
 
-include { MINIMAP2_ALIGN                        } from '../modules/minimap2/align/main'
-include { MINIMAP2_ALIGN as MINIMAP2_FILTER     } from '../modules/minimap2/align/main'
 include { SAMTOOLS_MERGE as FILTERED_BAM_MERGE  } from '../modules/samtools/merge/main'
-include { SAMTOOLS_FASTQ as BAM_TO_FASTQ        } from '../modules/samtools/fastq/main'
-include { SAMTOOLS_VIEW as FILTER_BAM           } from '../modules/samtools/view/main'
-include { QNAMES as TARGET_QNAMES               } from '../modules/samtools/qnames/main'
-include { QNAMES as FILTER_QNAMES               } from '../modules/samtools/qnames/main'
 include { MERGE_QNAMES as MERGE_TARGET_QNAMES   } from '../modules/command_line/merge_qnames/main'
 include { MERGE_QNAMES as MERGE_FILTER_QNAMES   } from '../modules/command_line/merge_qnames/main'
 include { GENERATE_FILTERED_QNAMES              } from '../modules/command_line/compare_qnames/main'
+// include { BISMARK_ALIGN      } from '../modules/bismark/align'
+// maybe add the samtools subworkflow
 
-process old_MINIMAP2_ALIGN {
+process MINIMAP2_ALIGN {
     tag "$meta.id"
     label 'process_high'
 
     if (params.enable_conda) {
-        conda "bioconda::minimap2=2.24 bioconda::samtools=1.14"
+        conda (params.enable_conda ? "bioconda::minimap2=2.24 bioconda::samtools=1.14" : null)
     } else {
         container "${ workflow.containerEngine == 'singularity' ? 'quay.io/biocontainers/mulled-v2-66534bcbb7031a148b13e2ad42583020b9cd25c4:1679e915ddb9d6b4abda91880c4b48857d471bd8-0' : null}"
     }
@@ -66,7 +62,7 @@ process old_MINIMAP2_ALIGN {
     """
 }
 
-process old_MINIMAP2_FILTER {
+process MINIMAP2_FILTER {
     tag "$meta.id"
     label 'process_high'
 
@@ -104,7 +100,7 @@ process old_MINIMAP2_FILTER {
     """
 }
 
-process old_TARGET_QNAMES {
+process TARGET_QNAMES {
     tag "$meta.id"
     label 'process_low'
 
@@ -137,8 +133,7 @@ process old_TARGET_QNAMES {
     """
 }
 
-process old_FILTER_BAM {
-    // use the nf-core samtools view and use config to achieve this output
+process FILTER_BAM {
     tag "$meta.id"
     label 'process_medium'
 
@@ -206,35 +201,23 @@ workflow ONT_LONG_READS {
         .fromPath(params.filter_index, type: 'file', checkIfExists: true)
         .set { filter_index }
 
+    // channel for composition of fastq reads and filter indexed genomes
+    fastq_files
+        .combine(filter_index)
+        .map{ it-> 
+            tuple([id: "${it[0].id}", target_index_prefix: "${it[0].index_prefix}", single_end: params.single_end, index_prefix: "${it[2].simpleName}"],
+            params.single_end ? file("${it[1][0]}") : [file("${it[1][0]}"), file("${it[1][1]}")],
+            file("${it[2]}")) }
+        .set{ filter_align_files }
 
-
-
-    // look at adding a section for the duplicating this with the other 2 softwares
-
-    // switch this to generate the information from the output of the first alignment
-
-    // // channel for composition of fastq reads and filter indexed genomes
-    // fastq_files
-    //     .combine(filter_index)
-    //     .map{ it-> 
-    //         tuple([id: "${it[0].id}", target_index_prefix: "${it[0].index_prefix}", single_end: params.single_end, index_prefix: "${it[2].simpleName}"],
-    //         params.single_end ? file("${it[1][0]}") : [file("${it[1][0]}"), file("${it[1][1]}")],
-    //         file("${it[2]}")) }
-    //     .set{ filter_align_files }
-
-    // // filter_align_files
-    // //     .first()
-    // //     .view()
+    // filter_align_files
+    //     .first()
+    //     .view()
 
     //
     // MODULE: Align the raw fastq files against the given microbe index files
     //
-    MINIMAP2_ALIGN (target_align_files, true)
-
-    //
-    // MODULE: Generate fastq files from the aligned Bam files in the previous step
-    //
-    BAM_TO_FASTQ (MINIMAP2_ALIGN.out.bam, false)
+    MINIMAP2_ALIGN (target_align_files)
 
     //
     // MODULE: Extract the qnames from the target aligned reads
@@ -247,104 +230,91 @@ workflow ONT_LONG_READS {
         .groupTuple()
         .set{ target_qname }
 
+    // target_qname.view()
+
     //
     // MODULE: Merge the target qnames and then return a file containing only the unique target qnames
     //
     MERGE_TARGET_QNAMES (target_qname)
 
-    // cartesian mulitply the sample fastqs to the indexed filter genomes
-    BAM_TO_FASTQ.out.other
-        .combine(filter_index)  // does this work for a multiple filter indexs
-        .map{ it-> 
-            tuple([id: "${it[0].id}", target_index_prefix: "${it[0].index_prefix}", single_end: params.single_end, index_prefix: "${it[2].simpleName}"],
-            file("${it[1]}"),
-            file("${it[2]}")) }
-        .set{ filter_files }
-
     //
-    // MODULE: Align the converted fastq files against the given filter index files (human, etc...)
+    // MODULE: Align the raw fastq files against the given filter index files (human, etc...)
     //
-    MINIMAP2_FILTER (filter_files, true)
-
-    //
-    // MODULE: Extract the qnames from the target aligned reads
-    //
-    FILTER_QNAMES (MINIMAP2_FILTER.out.bam)
+    MINIMAP2_FILTER (filter_align_files)
 
     // refactor id to allow grouping of bam files by sample id
-    FILTER_QNAMES.out.qname
+    MINIMAP2_FILTER.out.qname
         .map{ it -> tuple([id: "${it[0].id}"], it[1]) }
         .groupTuple()
         .set{ filter_qnames }
 
-    filter_qnames.view() // this needs to be merged as there maybe more than one filter genome
+    // filter_qnames.view() // this needs to be merged as there maybe more than one filter genome
 
-    // //
-    // // MODULE: Merge the filter qnames and then return a file containing only the unique filter qnames
-    // //
-    // MERGE_FILTER_QNAMES (filter_qnames)
+    //
+    // MODULE: Merge the filter qnames and then return a file containing only the unique filter qnames
+    //
+    MERGE_FILTER_QNAMES (filter_qnames)
 
-    // // refactor id to allow grouping of qname files by sample id
-    // MERGE_TARGET_QNAMES.out.qname
-    //     .mix( MERGE_FILTER_QNAMES.out.qname )
-    //     .groupTuple()
-    //     .set{ filtered_qname }
+    // refactor id to allow grouping of qname files by sample id
+    MERGE_TARGET_QNAMES.out.qname
+        .mix( MERGE_FILTER_QNAMES.out.qname )
+        .groupTuple()
+        .set{ filtered_qname }
 
-    // // filtered_qname.view()
+    // filtered_qname.view()
 
-    // //
-    // // MODULE: Merge the target & filter qnames together and then return a file containing only the qnames present in both
-    // //
-    // GENERATE_FILTERED_QNAMES (filtered_qname)
+    //
+    // MODULE: Merge the target & filter qnames together and then return a file containing only the qnames present in both
+    //
+    GENERATE_FILTERED_QNAMES (filtered_qname)
 
-    // // need to remap to set the 2 index of the tuple to a shared ID
-    // MINIMAP2_ALIGN.out.bam
-    //     .map{ it->
-    //         tuple([id: "${it[0].id}", single_end: params.single_end, index_prefix: "${it[0].index_prefix}"],
-    //         file("${it[1]}"),
-    //         "${it[0].id}") }
-    //     .set{ target_bam }
+    // need to remap to set the 2 index of the tuple to a shared ID
+    MINIMAP2_ALIGN.out.bam
+        .map{ it->
+            tuple([id: "${it[0].id}", single_end: params.single_end, index_prefix: "${it[0].index_prefix}"],
+            file("${it[1]}"),
+            "${it[0].id}") }
+        .set{ target_bam }
 
-    // // need to remap to set the 2 index of the tuple to a shared ID
-    // GENERATE_FILTERED_QNAMES.out.qname
-    //     .map{ it->
-    //         tuple([id: "${it[0].id}"],
-    //         file("${it[1]}"),
-    //         "${it[0].id}") }
-    //     .set{ filtered_qnames }
+    // need to remap to set the 2 index of the tuple to a shared ID
+    GENERATE_FILTERED_QNAMES.out.qname
+        .map{ it->
+            tuple([id: "${it[0].id}"],
+            file("${it[1]}"),
+            "${it[0].id}") }
+        .set{ filtered_qnames }
 
-    // // cartesian mulitply the aligned bams to the filtered qnames
-    // target_bam
-    //     .combine( filtered_qnames, by: 2 ) // 2 is the index of the shared ID
-    //     .map{ it-> 
-    //         tuple([id: "${it[1].id}", single_end: params.single_end, index_prefix: "${it[1].index_prefix}"],
-    //         file("${it[2]}"),
-    //         file("${it[4]}")) }
-    //     .set{ to_filter }
+    // cartesian mulitply the aligned bams to the filtered qnames
+    target_bam
+        .combine( filtered_qnames, by: 2 ) // 2 is the index of the shared ID
+        .map{ it-> 
+            tuple([id: "${it[1].id}", single_end: params.single_end, index_prefix: "${it[1].index_prefix}"],
+            file("${it[2]}"),
+            file("${it[4]}")) }
+        .set{ to_filter }
 
-    // // to_filter.first().view()
+    // to_filter.first().view()
 
-    // //
-    // // MODULE: Filter the target bam file to remove all reads that aligned to the filter genomes
-    // //
-    // FILTER_BAM (to_filter)
+    //
+    // MODULE: Filter the target bam file to remove all reads that aligned to the filter genomes
+    //
+    FILTER_BAM (to_filter)
 
-    // // refactor id to allow grouping of filtered bam files by sample id
-    // FILTER_BAM.out.bam
-    //     .map{ it -> tuple([id: "${it[0].id}"], it[1]) }
-    //     .groupTuple()
-    //     .set{ to_merge }
+    // refactor id to allow grouping of filtered bam files by sample id
+    FILTER_BAM.out.bam
+        .map{ it -> tuple([id: "${it[0].id}"], it[1]) }
+        .groupTuple()
+        .set{ to_merge }
 
-    // // to_merge.view()
+    // to_merge.view()
 
-    // //
-    // // MODULE: Merge the filtered bam files together
-    // //
-    // FILTERED_BAM_MERGE (to_merge)
+    //
+    // MODULE: Merge the filtered bam files together
+    //
+    FILTERED_BAM_MERGE (to_merge)
 
     emit:
-    // id          = FILTERED_BAM_MERGE.out.bam      // channel: [ val(meta), bam   ]
-    id          = BAM_TO_FASTQ.out.fastq      // channel: [ val(meta), bam   ]
+    id          = FILTERED_BAM_MERGE.out.bam      // channel: [ val(meta), bam   ]
 
 }
 

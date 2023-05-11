@@ -1,6 +1,6 @@
-process SAMTOOLS_MERGE {
+process QNAMES {
     tag "$meta.id"
-    label 'process_medium'
+    label 'process_low'
 
     if (params.enable_conda) {
         conda (params.enable_conda ? "bioconda::samtools=1.14" : null)
@@ -12,7 +12,8 @@ process SAMTOOLS_MERGE {
     tuple val(meta), path(bam)
 
     output:
-    tuple val(meta), path("*merged.target.bam"), emit: bam
+    tuple val(meta), path("*.txt"),  emit: qname
+    path  "versions.yml",            emit: versions
 
     when:
     task.ext.when == null || task.ext.when
@@ -20,12 +21,19 @@ process SAMTOOLS_MERGE {
     script:
     def args    = task.ext.args ?: ''
     def prefix  = task.ext.prefix ?: "${meta.id}"
-    def output = "${prefix}.target.bam"
     """
-    samtools merge \\
-        $args \\
+    samtools view \\
         -@ $task.cpus \\
-        -o $output \\
-        $bam
+        $args \\
+        $bam \\
+        | cut -f1 \\
+        | sort -T . \\
+        | uniq > ${prefix}.txt
+
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        samtools: \$(echo \$(samtools --version 2>&1) | sed 's/^.*samtools //; s/Using.*\$//')
+    END_VERSIONS
     """
 }

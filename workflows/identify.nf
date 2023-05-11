@@ -19,7 +19,7 @@
 ========================================================================================
 */
 
-include { METASCOPE_ID      } from '../modules/metascope/id/main'
+// include { METASCOPE_ID      } from '../modules/metascope/id/main'
 
 process MERGE_METASCOPE_ID {
     tag "$meta.id"
@@ -168,9 +168,6 @@ workflow IDENTIFY {
     PLOT_KRONA (METASCOPE_TO_KRONA.out.tsv)
 
     // nothing to emit as of now
-    // emit:
-    // id          = FILTERED_BAM_MERGE.out.bam      // channel: [ val(meta), bam   ]
-
 }
 
 /*

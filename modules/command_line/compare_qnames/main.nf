@@ -2,12 +2,6 @@ process GENERATE_FILTERED_QNAMES {
     tag "$meta.id"
     label 'process_low'
 
-    errorStrategy { task.attempt <= 3 ? 'retry' : 'finish' }
-    maxRetries 3
-
-    cpus 1
-    memory '2 GB'
-
     input:
     tuple val(meta), path(input)
 

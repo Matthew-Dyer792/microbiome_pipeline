@@ -26,12 +26,14 @@ nextflow.enable.dsl = 2
 // ch_input = file(params.input, checkIfExists: true)
 // if (ch_input.isEmpty()) {exit 1, "File provided with --input is empty: ${ch_input.getName()}!"}
 
-// Read in fastq from --input file
-Channel
-    .fromFilePairs(params.input, size: params.single_end ? 1 : 2, checkIfExists: true)
-    .ifEmpty { exit 1, "Cannot find any .fastq files matching: ${params.input}\nNB: Path needs to be enclosed in quotes!\n" }
-    .map { it -> tuple([id: "${it[0]}"], it[1]) }
-    .set { fastq_files }
+if (params.workflow != 'setup') {
+    // Read in fastq from --input file
+    Channel
+        .fromFilePairs(params.input, size: params.single_end ? 1 : 2, checkIfExists: true)
+        .ifEmpty { exit 1, "Cannot find any .fastq files matching: ${params.input}\nNB: Path needs to be enclosed in quotes!\n" }
+        .map { it -> tuple([id: "${it[0]}"], it[1]) }
+        .set { fastq_files }
+}
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -51,8 +53,8 @@ Channel
 
 if (params.workflow == 'ont_long_reads') {
     include { ONT_LONG_READS } from './workflows/ont_long_reads'
-// } else if (params.workflow == 'trimming') {
-//     include { TRIMMING } from './workflows/trimming'
+} else if (params.workflow == 'setup') {
+    include { SETUP } from './workflows/setup'
 // } else if (params.workflow == 'align') {
 //     include { TRIMMING } from './workflows/align'
 }
@@ -65,9 +67,15 @@ include { IDENTIFY } from './workflows/identify'
 workflow     MICROBIOME_PIPELINE {
 
     //
-    // WORKFLOW: run the pre-alignment qc
+    // WORKFLOW: run the pre-execution download step
     //
-    if (params.workflow == 'ont_long_reads') {
+    if (params.workflow == 'setup') {
+        SETUP ( )
+
+    //
+    // WORKFLOW: run the main analysis
+    //
+    } else if (params.workflow == 'ont_long_reads') {
         ONT_LONG_READS ( fastq_files )
 
         ONT_LONG_READS.out.id
@@ -87,7 +95,7 @@ workflow     MICROBIOME_PIPELINE {
 
     // to_identify.view()
 
-    IDENTIFY ( to_identify )
+    // IDENTIFY ( to_identify )
     }
 }
 
