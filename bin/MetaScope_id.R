@@ -28,3 +28,6 @@ metascope_id(
   aligner = args[2],
   num_species_plot = 0
 )
+
+# close by writing out sessionInfo()
+writeLines(capture.output(sessionInfo()), "sessionInfo.txt")
