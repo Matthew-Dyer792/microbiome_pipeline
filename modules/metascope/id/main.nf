@@ -2,30 +2,28 @@ process METASCOPE_ID {
     tag "$meta.id"
     label 'process_low'
 
-    errorStrategy 'finish'
-
-    // issue with chia, will need work around
-    // container "${ workflow.containerEngine == 'singularity' ? 'file:///research/project/shared/benoukraf_lab/.singularity_cache/metascope.sif' : null}"
+    container "${ workflow.containerEngine == 'singularity' ? 'matthewdyer/metascope:1.0.0' : null}"
 
     input:
-    tuple val(meta), path(bam)
+    tuple val(meta), path(bam, stageAs: 'bam/*')
 
     output:
-    tuple val(meta), path("*.csv"), emit: csv
+    tuple val(meta), path("bam/*.csv"),     emit: csv
+    path "versions.yml",                    emit: versions
 
     when:
     task.ext.when == null || task.ext.when
 
     script:
-    def aligner   = params.ont_long_reads ? "other" : "bowtie"
+    def aligner   = params.ont_long_reads ? "other" : "bowtie2"
     """
-    cp ${projectDir}/bin/MetaScope_id.R ./
-    mkdir bam
-    cp -L $bam ./bam/
-
-    singularity run -B ./:\$HOME -C /research/project/shared/benoukraf_lab/.singularity_cache/metascope.sif \\
-     Rscript --vanilla MetaScope_id.R \\
-        bam/$bam \\
+    Rscript --vanilla ${projectDir}/bin/MetaScope_id.R \\
+        $bam \\
         $aligner
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        MetaScope: \$( cat sessionInfo.txt )
+    END_VERSIONS
     """
 }
