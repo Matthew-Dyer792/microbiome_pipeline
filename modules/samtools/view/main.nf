@@ -9,9 +9,8 @@ process SAMTOOLS_VIEW {
     }
 
     input:
-    tuple val(meta), path(input) // removed index
-    path fasta
-    path qname
+    tuple val(meta), path(input), path(qname)
+    tuple val(meta2), path(fasta)
 
     output:
     tuple val(meta), path("*.bam"),  emit: bam,     optional: true
