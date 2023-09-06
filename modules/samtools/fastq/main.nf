@@ -2,11 +2,10 @@ process SAMTOOLS_FASTQ {
     tag "$meta.id"
     label 'process_low'
 
-    if (params.enable_conda) {
-        conda "bioconda::samtools=1.14"
-    } else {
-        container "${ workflow.containerEngine == 'singularity' ? 'quay.io/biocontainers/samtools:1.14--hb421002_0' : null}"
-    }
+    conda "bioconda::samtools=1.17"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/samtools:1.17--h00cdaf9_0' :
+        'biocontainers/samtools:1.17--h00cdaf9_0' }"
 
     input:
     tuple val(meta), path(bam)

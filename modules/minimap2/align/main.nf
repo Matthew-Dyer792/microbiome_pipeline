@@ -2,11 +2,8 @@ process MINIMAP2_ALIGN {
     tag "$meta.id"
     label 'process_high'
 
-    if (params.enable_conda) {
-        conda "bioconda::minimap2=2.24 bioconda::samtools=1.14"
-    } else {
-        container "${ workflow.containerEngine == 'singularity' ? 'quay.io/biocontainers/mulled-v2-66534bcbb7031a148b13e2ad42583020b9cd25c4:1679e915ddb9d6b4abda91880c4b48857d471bd8-0' : null}"
-    }
+    conda "bioconda::minimap2=2.24 bioconda::samtools=1.14"
+    container "${ workflow.containerEngine == 'singularity' ? 'quay.io/biocontainers/mulled-v2-66534bcbb7031a148b13e2ad42583020b9cd25c4:1679e915ddb9d6b4abda91880c4b48857d471bd8-0' : null}"
 
     input:
     tuple val(meta), path(reads), path(index)

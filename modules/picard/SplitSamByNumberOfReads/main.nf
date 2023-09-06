@@ -5,7 +5,7 @@ process SPLIT_BAM {
     errorStrategy { task.attempt <= 3 ? 'retry' : 'finish' }
     maxRetries 3
 
-    conda (params.enable_conda ? "bioconda::picard=3.0.0" : null)
+    conda "bioconda::picard=3.0.0"
     container "${ workflow.containerEngine == 'singularity' ? 'quay.io/biocontainers/picard:3.0.0--hdfd78af_1' : null}"
 
     input:

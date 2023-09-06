@@ -2,13 +2,10 @@ process PICARD_MARKDUPLICATES {
     tag "$meta.id"
     label 'large_mem'
 
-    if (params.enable_conda) {
-            conda "bioconda::picard=3.0.0"
-    } else {
-        container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-            'https://depot.galaxyproject.org/singularity/picard:3.0.0--hdfd78af_1' :
-            'biocontainers/picard:3.0.0--hdfd78af_1' }"
-    }
+    conda "bioconda::picard=3.0.0"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/picard:3.0.0--hdfd78af_1' :
+        'biocontainers/picard:3.0.0--hdfd78af_1' }"
 
     input:
     tuple val(meta), path(bam)
