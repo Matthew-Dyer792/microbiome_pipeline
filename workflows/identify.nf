@@ -19,7 +19,7 @@
 ========================================================================================
 */
 
-// include { METASCOPE_ID      } from '../modules/metascope/id/main'
+include { METASCOPE_ID      } from '../modules/metascope/id/main'
 
 process MERGE_METASCOPE_ID {
     tag "$meta.id"
@@ -102,9 +102,6 @@ process PLOT_KRONA {
     conda (params.enable_conda ? "biconda::krona=2.81" : null)
     container "${ workflow.containerEngine == 'singularity' ? 'quay.io/biocontainers/krona:2.8.1--pl5321hdfd78af_1' : null}"
 
-    // container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
-    //     'file:///research/project/shared/benoukraf_lab/.singularity_cache/krona.sif' : '' }"
-
     cpus 1
     memory '2 GB'
 
@@ -137,35 +134,35 @@ process PLOT_KRONA {
 workflow IDENTIFY {
 
     take:
-    bam_to_identify // channel: val( meta ), path( bam )
+    bam // channel: val( meta ), path( bam )
 
     main:
 
     //
     // MODULE: Run Metascope's EM algorithm to identify the microbes
     //
-    METASCOPE_ID (bam_to_identify)
+    METASCOPE_ID (bam)
 
-    // refactor id to allow grouping of qname files by sample id
-    METASCOPE_ID.out.csv
-        .map{ it -> tuple([id: "${it[0].id}"], it[1]) }
-        .groupTuple()
-        .set{ bulk_ids }
+    // // refactor id to allow grouping of qname files by sample id
+    // METASCOPE_ID.out.csv
+    //     .map{ it -> tuple([id: "${it[0].id}"], it[1]) }
+    //     .groupTuple()
+    //     .set{ bulk_ids }
 
-    //
-    // MODULE: Run Metascope's EM algorithm to identify the microbes
-    //
-    MERGE_METASCOPE_ID (bulk_ids)
+    // //
+    // // MODULE: Run Metascope's EM algorithm to identify the microbes
+    // //
+    // MERGE_METASCOPE_ID (bulk_ids)
 
-    //
-    // MODULE: Run Metascope's EM algorithm to identify the microbes
-    //
-    METASCOPE_TO_KRONA (MERGE_METASCOPE_ID.out.csv)
+    // //
+    // // MODULE: Run Metascope's EM algorithm to identify the microbes
+    // //
+    // METASCOPE_TO_KRONA (MERGE_METASCOPE_ID.out.csv)
 
-    //
-    // MODULE: Run Metascope's EM algorithm to identify the microbes
-    //
-    PLOT_KRONA (METASCOPE_TO_KRONA.out.tsv)
+    // //
+    // // MODULE: Run Metascope's EM algorithm to identify the microbes
+    // //
+    // PLOT_KRONA (METASCOPE_TO_KRONA.out.tsv)
 
     // nothing to emit as of now
 }

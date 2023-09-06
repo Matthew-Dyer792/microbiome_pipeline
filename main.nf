@@ -76,26 +76,15 @@ workflow     MICROBIOME_PIPELINE {
     // WORKFLOW: run the main analysis
     //
     } else if (params.workflow == 'ont_long_reads') {
+        //
+        // WORKFLOW: Align against refseq and remove filter genomes
+        //
         ONT_LONG_READS ( fastq_files )
 
-        ONT_LONG_READS.out.id
-            .set{ to_identify }
-
-    // //
-    // // WORKFLOW: trim the fastq files if necessary
-    // //
-    // } else if (params.workflow == 'trimming') {
-    //     TRIMMING (  )
-
-    // //
-    // // WORKFLOW: trim the fastq files if necessary
-    // //
-    // } else if (params.workflow == 'align') {
-    //     ALIGN (  )
-
-    // to_identify.view()
-
-    // IDENTIFY ( to_identify )
+        //
+        // WORKFLOW: Apply metascope to identify microbe genomes
+        //
+        IDENTIFY ( ONT_LONG_READS.out.bam)
     }
 }
 

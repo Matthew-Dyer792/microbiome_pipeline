@@ -51,6 +51,8 @@ java -version
     sudo mv nextflow /usr/local/bin/
     ```
 
+### Nextflow with Conda
+
 4. If you want to install Nextflow through Anaconda, you can do so by running:
     ```bash
     conda create -n nextflow -c bioconda nextflow
@@ -103,20 +105,104 @@ Singularity is chosen by most HPCs as their primary container software because i
     singularity --version
     ```
 
+### Singularity on the CAIR HPC
+
 Alternatively if you are using CAIR you can enter the following commands to activate singularity:
-```bash
-module load application/go/1.14.2
-module load application/singularity/3.5.3 
-```
+
+1. load the GO module:
+    ```bash
+    module load application/go/1.14.2
+    ```
+
+2. load the Singularity module:
+    ```bash
+    module load application/singularity/3.5.3 
+    ```
+    *NOTE: The only version of singularity available on CAIR is 3.5.3, this should not cause issues with the execution of the pipeline.
+
 # Running the Pipeline
+## Minimal
 
 ```bash
 conda activate nextflow
 nextflow run /research/project/shared/benoukraf_lab/nextflow/microbiome_pipeline/main.nf -profile chia,ont,conda --input fastq/00811_8.fastq --target_index "/research/project/shared/benoukraf_lab/pathoscope/metascope/index/refseq_all/ont/*-ont.mmi" --filter_index /research/project/shared/benoukraf_lab/pathoscope/metascope/index/human/ont/hg38-ont.mmi
+```
 
-/research/project/shared/benoukraf_lab/nextflow/microbiome_pipeline/main.nf
--profile chia,ont,conda
---input fastq/00811_8.fastq
---target_index "/research/project/shared/benoukraf_lab/pathoscope/metascope/index/refseq_all/ont/*-ont.mmi"
---filter_index /research/project/shared/benoukraf_lab/pathoscope/metascope/index/human/ont/hg38-ont.mmi
+## Complex
+
+```bash
+conda activate nextflow
+nextflow run Matthew-Dyer792/microbiome_pipeline -profile chia,ont,conda --conda_cacheDir /research/project/shared/benoukraf_lab/matthew/.conda_cacheDir --input fastq/00811_8.fastq --sequence_summary "summary/*.txt" --target_index "/research/project/shared/benoukraf_lab/pathoscope/metascope/index/refseq_all/ont/*-ont.mmi" --filter_index /research/project/shared/benoukraf_lab/pathoscope/metascope/index/human/ont/hg38-ont.mmi --ncbi_key t28545asd34jjhgjg2342
+```
+
+# Pipeline Options
+
+### Pipeline location:
+This is a path that leads to the folder containing the Microbiome Pipeline. It can be either a local path i.e. `"/research/project/shared/benoukraf_lab/nextflow/microbiome_pipeline"` or a github repository `"Matthew-Dyer792/microbiome_pipeline"`.
+```bash
+run Matthew-Dyer792/microbiome_pipeline
+```
+
+### Pipeline profile(s):
+These are preset configurations that allow for standardize execution of the pipeline. For example there is a profile for conda and singularity, chia vs. local execution, and for oxford nanopore vs. illumina reads.
+```bash
+-profile illumina
+```
+or
+```bash
+-profile ont,conda,chia
+```
+
+### Pipeline workflow:
+There are two workflow options with this pipeline, the primary is to run the metascope package on illumina reads. The secondary workflow recapitulates the metascope package but for oxford nanopore long reads. They can be selected with either illumina or ont. Note: Using the ont profile will set the workflow value to ont by default.
+```bash
+--workflow illumina
+```
+
+### Pipeline conda cache directory:
+By default nextflow will store the conda files in the "work" directory. This file directory is usually discarded upon successful completion of the pipeline. Therefore if you want the conda directories to persist a external directory must be supplied. Note: If you intend to run this pipeline multiple times this will save the time and hard drive space of duplicate installations.
+```bash
+--conda_cacheDir /research/project/conda
+```
+
+### Input:
+The primary input of the pipeline is fastq files. They can be provided as a regex "/data/big/\*.fq" or for paired end reads "data/big/file_{1,2}.fq". Note: the path must be encapsulated by "" in order to be properly interpreted.
+```bash
+--input "/research/project/fastq/*_{1,2}.fq"
+```
+
+### Single end
+By default the pipeline assumes that paired end reads are provided. If single end reads are used set the flag to "true". Note: Using the ont profile will set single end to true by default.
+```bash
+--single_end true
+```
+
+### Sequence summary
+The sequencing_summary.txt files created along with the oxford nanopore sequencing files. These are required for pycoqc. They can be provided as a regex "/data/big/\*.txt". Note: The path must be encapsulated by "" in order to be properly interpreted.
+```bash
+--sequence_summary "/research/project/summary/*.txt"
+```
+
+### Target index:
+The genomes of microbes you aim to discover in your sample indexed by your aligner of choice (bowtie2, minimap2, bwa...). They can be provided as a regex "/data/big/\*.fq". Note: the path must be encapsulated by "" in order to be properly interpreted.
+```bash
+--target_index "/research/project/target_genomes/*-ont.mmi"
+```
+
+### Filter index:
+The genomes of the host organism (or confounding organisms) you aim to remove from your sample indexed by your aligner of choice (bowtie2, minimap2, bwa...). They can be provided as a regex "/data/big/\*.mmi". Note: the path must be encapsulated by "" in order to be properly interpreted.
+```bash
+--filter_index "/research/project/filter_genomes/*-ont.mmi"
+```
+
+### NCBI key:
+NCBI Entrez API key. optional. Due to the high number of requests made to NCBI, the ID function will be less prone to errors if you obtain an NCBI key. You may enter the string from your account.
+```bash
+--ncbi_key t28545asd34jjhgjg2342
+```
+
+### Pipeline resume:
+A built in nextflow feature to allow resumption of the pipeline using a cached version of the previously completed steps. Note: "work" directory created by the pipeline must be present for this to function.
+```bash
+-resume
 ```
