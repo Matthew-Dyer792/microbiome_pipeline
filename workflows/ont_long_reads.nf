@@ -89,24 +89,26 @@ workflow ONT_LONG_READS {
             file("${it[2]}")) }
         .set{ target_align_files }
 
-    // channel for the ONT sequencing_summary.txt files
-    Channel
-        Channel
-        .fromFilePairs(params.sequence_summary, size: 1, checkIfExists: true)
-        .ifEmpty { exit 1, "Cannot find any .txt files matching: ${params.sequence_summary}\nNB: Path needs to be enclosed in quotes!\n" }
-        .map { it -> tuple([id: "${it[0]}"], it[1]) }
-        .set{ summary_files }
-
 
 
     // look at adding a section for the duplicating this with kraken/centrifuge
 
 
 
-    //
-    // MODULE: Align the raw fastq files against the given microbe index files
-    //
-    PYCOQC (summary_files)
+    if (params.sequence_summary) {
+        // channel for the ONT sequencing_summary.txt files
+        Channel
+            Channel
+            .fromFilePairs(params.sequence_summary, size: 1, checkIfExists: true)
+            .ifEmpty { exit 1, "Cannot find any .txt files matching: ${params.sequence_summary}\nNB: Path needs to be enclosed in quotes!\n" }
+            .map { it -> tuple([id: "${it[0]}"], it[1]) }
+            .set{ summary_files }
+
+        //
+        // MODULE: Align the raw fastq files against the given microbe index files
+        //
+        PYCOQC (summary_files)
+    }
 
     //
     // MODULE: Align the raw fastq files against the given microbe index files
